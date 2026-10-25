@@ -1,0 +1,26 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme -->
+    <style name="Theme.AstroCam" parent="Theme.MaterialComponents.NoActionBar">
+        <!-- Primary brand color -->
+        <item name="colorPrimary">@color/accent_cyan</item>
+        <item name="colorPrimaryVariant">@color/accent_blue</item>
+        <item name="colorOnPrimary">@color/bg_space</item>
+        <!-- Secondary brand color -->
+        <item name="colorSecondary">@color/accent_amber</item>
+        <item name="colorSecondaryVariant">@color/accent_amber</item>
+        <item name="colorOnSecondary">@color/bg_space</item>
+        <!-- Status bar color -->
+        <item name="android:statusBarColor">@color/bg_space</item>
+        <item name="android:navigationBarColor">@color/bg_space</item>
+        <item name="android:windowBackground">@color/bg_space</item>
+    </style>
+
+    <style name="Theme.AstroCam.Fullscreen" parent="Theme.AstroCam">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowFullscreen">false</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:statusBarColor">#66000000</item>
+        <item name="android:navigationBarColor">#CC090C10</item>
+    </style>
+</resources>

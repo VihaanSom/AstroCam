@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Deep Space Astrophotography Palette -->
+    <color name="bg_space">#090C10</color>
+    <color name="bg_panel">#151B23</color>
+    <color name="bg_panel_translucent">#D9151B23</color>
+    <color name="bg_hud_overlay">#80090C10</color>
+    <color name="panel_border">#30363D</color>
+    
+    <color name="accent_cyan">#00E5FF</color>
+    <color name="accent_amber">#FFAB00</color>
+    <color name="accent_red">#FF453A</color>
+    <color name="accent_blue">#2F81F7</color>
+    <color name="accent_green">#3FB950</color>
+    
+    <color name="text_primary">#F0F6FC</color>
+    <color name="text_secondary">#8B949E</color>
+    <color name="text_muted">#484F58</color>
+    
+    <color name="chip_bg">#21262D</color>
+    <color name="chip_selected">#388BFD</color>
+    <color name="shutter_inner">#F0F6FC</color>
+    <color name="shutter_ring">#00E5FF</color>
+</resources>

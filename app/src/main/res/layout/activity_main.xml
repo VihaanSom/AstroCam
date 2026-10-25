@@ -1,0 +1,656 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_space"
+    android:keepScreenOn="true">
+
+    <!-- Live Camera Preview (AutoFit) -->
+    <com.astrocam.AutoFitTextureView
+        android:id="@+id/texture_view"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Top Navigation & Controls Bar -->
+    <LinearLayout
+        android:id="@+id/top_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="36dp"
+        android:paddingBottom="10dp"
+        android:background="#80090C10"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <!-- Lens Switcher Button -->
+        <TextView
+            android:id="@+id/btn_lens_switch"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:background="@drawable/bg_chip_normal"
+            android:text="Rear (0)"
+            android:textColor="@color/accent_cyan"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <!-- Format Button (RAW / JPG / RAW+JPG) -->
+        <TextView
+            android:id="@+id/btn_format_switch"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:background="@drawable/bg_chip_normal"
+            android:text="RAW + JPG"
+            android:textColor="@color/accent_amber"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp" />
+    </LinearLayout>
+
+    <!-- Astro HUD Status Banner (Real-time Applied / Requested Settings) -->
+    <TextView
+        android:id="@+id/tv_hud_status"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/bg_hud_badge"
+        android:text="ISO 3200 • 15s • MF ∞ • RAW+JPG"
+        android:textColor="@color/text_primary"
+        android:textSize="12sp"
+        android:fontFamily="monospace"
+        app:layout_constraintTop_toBottomOf="@id/top_bar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Center Countdown / Exposure Notice Overlay -->
+    <TextView
+        android:id="@+id/tv_countdown_overlay"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_hud_badge"
+        android:padding="20dp"
+        android:text="3"
+        android:textColor="@color/accent_cyan"
+        android:textSize="48sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Capture Status Indicator (e.g. Exposing 10s..., Saving DNG...) -->
+    <TextView
+        android:id="@+id/tv_capture_status"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        android:background="@drawable/bg_hud_badge"
+        android:text="READY"
+        android:textColor="@color/accent_green"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:visibility="visible"
+        app:layout_constraintBottom_toTopOf="@id/bottom_container"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Bottom Controls & Adjustment Container -->
+    <LinearLayout
+        android:id="@+id/bottom_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/bg_panel_card"
+        android:paddingTop="8dp"
+        android:paddingBottom="16dp"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <!-- Mode Switcher Tabs (SINGLE vs INTERVALOMETER) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="38dp"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginBottom="8dp">
+
+            <TextView
+                android:id="@+id/tab_single_mode"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="@drawable/bg_chip_selected"
+                android:text="SINGLE SHOT"
+                android:textColor="@color/text_primary"
+                android:textStyle="bold"
+                android:textSize="13sp"
+                android:gravity="center"
+                android:layout_marginEnd="6dp" />
+
+            <TextView
+                android:id="@+id/tab_intervalometer_mode"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="@drawable/bg_chip_normal"
+                android:text="INTERVALOMETER"
+                android:textColor="@color/text_secondary"
+                android:textStyle="bold"
+                android:textSize="13sp"
+                android:gravity="center"
+                android:layout_marginStart="6dp" />
+        </LinearLayout>
+
+        <!-- Quick Manual Settings Row (ISO, SHUTTER, FOCUS, WB) -->
+        <LinearLayout
+            android:id="@+id/row_quick_settings"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:orientation="horizontal"
+            android:weightSum="4"
+            android:layout_marginBottom="8dp">
+
+            <!-- ISO Button -->
+            <LinearLayout
+                android:id="@+id/btn_setting_iso"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="@drawable/bg_chip_normal"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:layout_marginEnd="4dp">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="ISO"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
+                <TextView
+                    android:id="@+id/tv_val_iso"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="AUTO"
+                    android:textColor="@color/accent_cyan"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- Shutter Speed Button -->
+            <LinearLayout
+                android:id="@+id/btn_setting_shutter"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="@drawable/bg_chip_normal"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:layout_marginStart="2dp"
+                android:layout_marginEnd="2dp">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="SHUTTER"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
+                <TextView
+                    android:id="@+id/tv_val_shutter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="AUTO"
+                    android:textColor="@color/accent_cyan"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- Focus Button -->
+            <LinearLayout
+                android:id="@+id/btn_setting_focus"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="@drawable/bg_chip_normal"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:layout_marginStart="2dp"
+                android:layout_marginEnd="2dp">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="FOCUS"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
+                <TextView
+                    android:id="@+id/tv_val_focus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="AF"
+                    android:textColor="@color/accent_cyan"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- White Balance Button -->
+            <LinearLayout
+                android:id="@+id/btn_setting_wb"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="@drawable/bg_chip_normal"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:layout_marginStart="4dp">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="WB"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
+                <TextView
+                    android:id="@+id/tv_val_wb"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="AUTO"
+                    android:textColor="@color/accent_cyan"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Detailed Adjustment Drawer for Selected Parameter -->
+        <FrameLayout
+            android:id="@+id/panel_drawer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:visibility="gone">
+
+            <!-- Focus Adjustment Panel -->
+            <LinearLayout
+                android:id="@+id/panel_focus_controls"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="4dp">
+
+                    <Button
+                        android:id="@+id/btn_focus_af"
+                        android:layout_width="wrap_content"
+                        android:layout_height="36dp"
+                        android:text="Auto Focus"
+                        android:textSize="12sp"
+                        android:textColor="@color/text_primary"
+                        android:background="@drawable/bg_chip_normal"
+                        android:layout_marginEnd="8dp" />
+
+                    <Button
+                        android:id="@+id/btn_focus_infinity"
+                        android:layout_width="wrap_content"
+                        android:layout_height="36dp"
+                        android:text="∞ Infinity"
+                        android:textSize="12sp"
+                        android:textColor="@color/accent_cyan"
+                        android:background="@drawable/bg_chip_normal"
+                        android:layout_marginEnd="8dp" />
+
+                    <TextView
+                        android:id="@+id/tv_focus_slider_val"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="MF: 0.00 (∞)"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp"
+                        android:gravity="end" />
+                </LinearLayout>
+
+                <SeekBar
+                    android:id="@+id/sb_focus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:max="1000"
+                    android:progress="0"
+                    android:thumbTint="@color/accent_cyan"
+                    android:progressTint="@color/accent_cyan" />
+            </LinearLayout>
+
+            <!-- Horizontal Chips Container for ISO, Shutter, WB -->
+            <HorizontalScrollView
+                android:id="@+id/hsv_chips"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:scrollbars="none">
+
+                <LinearLayout
+                    android:id="@+id/ll_chips_container"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="4dp" />
+            </HorizontalScrollView>
+        </FrameLayout>
+
+        <!-- Intervalometer Settings & Progress View -->
+        <LinearLayout
+            android:id="@+id/panel_intervalometer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            android:layout_marginBottom="8dp">
+
+            <!-- Interval Configuration Rows (Shown when IDLE) -->
+            <LinearLayout
+                android:id="@+id/layout_interval_config"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <!-- Interval Row -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="40dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Interval between shots:"
+                        android:textColor="@color/text_primary"
+                        android:textSize="13sp" />
+
+                    <Button
+                        android:id="@+id/btn_interval_dec"
+                        android:layout_width="40dp"
+                        android:layout_height="36dp"
+                        android:text="-"
+                        android:textColor="@color/text_primary"
+                        android:background="@drawable/bg_chip_normal" />
+
+                    <TextView
+                        android:id="@+id/tv_interval_seconds"
+                        android:layout_width="60dp"
+                        android:layout_height="wrap_content"
+                        android:text="3s"
+                        android:textColor="@color/accent_cyan"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:gravity="center" />
+
+                    <Button
+                        android:id="@+id/btn_interval_inc"
+                        android:layout_width="40dp"
+                        android:layout_height="36dp"
+                        android:text="+"
+                        android:textColor="@color/text_primary"
+                        android:background="@drawable/bg_chip_normal" />
+                </LinearLayout>
+
+                <!-- Frames Count Row -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="40dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="4dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Number of frames:"
+                        android:textColor="@color/text_primary"
+                        android:textSize="13sp" />
+
+                    <Button
+                        android:id="@+id/btn_frames_dec"
+                        android:layout_width="40dp"
+                        android:layout_height="36dp"
+                        android:text="-"
+                        android:textColor="@color/text_primary"
+                        android:background="@drawable/bg_chip_normal" />
+
+                    <TextView
+                        android:id="@+id/tv_frames_count"
+                        android:layout_width="60dp"
+                        android:layout_height="wrap_content"
+                        android:text="20"
+                        android:textColor="@color/accent_cyan"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:gravity="center" />
+
+                    <Button
+                        android:id="@+id/btn_frames_inc"
+                        android:layout_width="40dp"
+                        android:layout_height="36dp"
+                        android:text="+"
+                        android:textColor="@color/text_primary"
+                        android:background="@drawable/bg_chip_normal" />
+                </LinearLayout>
+
+                <!-- Quick Frame Presets -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="32dp"
+                    android:orientation="horizontal"
+                    android:gravity="center"
+                    android:layout_marginTop="6dp">
+
+                    <TextView
+                        android:id="@+id/chip_frames_10"
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:text="10"
+                        android:textColor="@color/text_secondary"
+                        android:background="@drawable/bg_chip_normal"
+                        android:gravity="center"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        android:layout_marginEnd="6dp" />
+
+                    <TextView
+                        android:id="@+id/chip_frames_50"
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:text="50"
+                        android:textColor="@color/text_secondary"
+                        android:background="@drawable/bg_chip_normal"
+                        android:gravity="center"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        android:layout_marginEnd="6dp" />
+
+                    <TextView
+                        android:id="@+id/chip_frames_100"
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:text="100"
+                        android:textColor="@color/text_secondary"
+                        android:background="@drawable/bg_chip_normal"
+                        android:gravity="center"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        android:layout_marginEnd="6dp" />
+
+                    <TextView
+                        android:id="@+id/chip_frames_inf"
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:text="∞ (Continuous)"
+                        android:textColor="@color/text_secondary"
+                        android:background="@drawable/bg_chip_normal"
+                        android:gravity="center"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tv_interval_warning"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:textColor="@color/accent_amber"
+                    android:textSize="11sp"
+                    android:visibility="gone" />
+            </LinearLayout>
+
+            <!-- Running Progress Display (Shown when active) -->
+            <LinearLayout
+                android:id="@+id/layout_interval_running"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/tv_interval_progress_frames"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="0 / 20"
+                        android:textColor="@color/accent_cyan"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tv_interval_progress_time"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Elapsed: 00:00 • Rem: --:--"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp"
+                        android:fontFamily="monospace" />
+                </LinearLayout>
+
+                <ProgressBar
+                    android:id="@+id/pb_interval_progress"
+                    style="@android:style/Widget.ProgressBar.Horizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="8dp"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="6dp"
+                    android:progress="0"
+                    android:progressTint="@color/accent_cyan" />
+
+                <TextView
+                    android:id="@+id/tv_interval_running_status"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Preparing sequence…"
+                    android:textColor="@color/text_primary"
+                    android:textSize="13sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Main Capture / Trigger Bar -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="84dp">
+
+            <!-- Single Capture Shutter Button Layout -->
+            <RelativeLayout
+                android:id="@+id/layout_single_shutter"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <!-- Last Captured Thumbnail Preview -->
+                <ImageView
+                    android:id="@+id/iv_last_photo_thumbnail"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_alignParentStart="true"
+                    android:layout_centerVertical="true"
+                    android:background="@drawable/bg_chip_normal"
+                    android:scaleType="centerCrop"
+                    android:contentDescription="Last Captured Photo" />
+
+                <!-- Main Shutter Button -->
+                <FrameLayout
+                    android:id="@+id/btn_shutter_trigger"
+                    android:layout_width="74dp"
+                    android:layout_height="74dp"
+                    android:layout_centerInParent="true"
+                    android:clickable="true"
+                    android:focusable="true">
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/bg_shutter_outer" />
+
+                    <View
+                        android:layout_width="56dp"
+                        android:layout_height="56dp"
+                        android:layout_gravity="center"
+                        android:background="@drawable/bg_shutter_inner" />
+                </FrameLayout>
+            </RelativeLayout>
+
+            <!-- Intervalometer Start / Stop Button Layout -->
+            <LinearLayout
+                android:id="@+id/layout_interval_trigger"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:visibility="gone">
+
+                <Button
+                    android:id="@+id/btn_interval_action"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:text="START SEQUENCE (3s Delay)"
+                    android:textColor="@color/text_primary"
+                    android:textStyle="bold"
+                    android:textSize="15sp"
+                    android:background="@drawable/bg_button_action" />
+            </LinearLayout>
+        </FrameLayout>
+
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AstroCam</string>
+    <string name="camera_permission_required">Camera permission is required for astrophotography.</string>
+    <string name="storage_permission_required">Storage permission is required to save photos.</string>
+    <string name="grant_permission">Grant Permission</string>
+    
+    <string name="mode_single">SINGLE</string>
+    <string name="mode_intervalometer">INTERVALOMETER</string>
+    
+    <string name="iso_label">ISO</string>
+    <string name="shutter_label">SHUTTER</string>
+    <string name="focus_label">FOCUS</string>
+    <string name="wb_label">WB</string>
+    <string name="lens_label">LENS</string>
+    
+    <string name="auto">AUTO</string>
+    <string name="infinity">∞</string>
+    <string name="manual_focus">MF</string>
+    <string name="auto_focus">AF</string>
+    
+    <string name="format_jpeg">JPEG</string>
+    <string name="format_raw">RAW (DNG)</string>
+    <string name="format_raw_jpeg">RAW + JPG</string>
+    
+    <string name="start_sequence">START SEQUENCE</string>
+    <string name="stop_sequence">STOP SEQUENCE</string>
+    <string name="capturing">Capturing…</string>
+    <string name="saving">Saving…</string>
+    <string name="ready">READY</string>
+</resources>
