@@ -14,6 +14,7 @@ import android.hardware.camera2.CaptureFailure;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.TotalCaptureResult;
+import android.hardware.camera2.params.RggbChannelVector;
 import android.media.Image;
 import android.media.ImageReader;
 import android.net.Uri;
@@ -93,6 +94,9 @@ public class CameraController {
     private long currentExposureNs = -1L; // -1 = Auto
     private float currentFocusDistance = -1f; // -1 = Auto focus
     private int currentAwbMode = CameraMetadata.CONTROL_AWB_MODE_AUTO;
+    private int currentKelvin = -1; // -1 = Auto AWB
+    private int lastAutoIso = 400;
+    private long lastAutoExposureNs = 33_333_333L; // ~1/30s fallback
 
     private final Semaphore cameraOpenCloseLock = new Semaphore(1);
     private boolean isCapturing = false;
@@ -341,14 +345,13 @@ public class CameraController {
             if (currentIso > 0 || currentExposureNs > 0) {
                 if (currentCapabilities.isManualSensorSupported()) {
                     previewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF);
-                    if (currentIso > 0) {
-                        previewRequestBuilder.set(CaptureRequest.SENSOR_SENSITIVITY, currentIso);
-                    }
-                    if (currentExposureNs > 0) {
-                        // Clamp preview exposure to 1/10s (100ms) so preview stays fluid for framing stars
-                        long previewExposure = Math.min(currentExposureNs, 100_000_000L);
-                        previewRequestBuilder.set(CaptureRequest.SENSOR_EXPOSURE_TIME, previewExposure);
-                    }
+                    int isoToSet = (currentIso > 0) ? currentIso : lastAutoIso;
+                    previewRequestBuilder.set(CaptureRequest.SENSOR_SENSITIVITY, isoToSet);
+
+                    long expToSet = (currentExposureNs > 0) ? currentExposureNs : lastAutoExposureNs;
+                    // Clamp preview exposure to 1/10s (100ms) so preview stays fluid for framing stars
+                    long previewExposure = Math.min(expToSet, 100_000_000L);
+                    previewRequestBuilder.set(CaptureRequest.SENSOR_EXPOSURE_TIME, previewExposure);
                 } else {
                     previewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
                 }
@@ -365,7 +368,7 @@ public class CameraController {
             }
 
             // Apply White Balance
-            previewRequestBuilder.set(CaptureRequest.CONTROL_AWB_MODE, currentAwbMode);
+            applyWhiteBalance(previewRequestBuilder);
 
             previewRequest = previewRequestBuilder.build();
             captureSession.setRepeatingRequest(previewRequest, previewCaptureCallback, backgroundHandler);
@@ -384,6 +387,13 @@ public class CameraController {
             Integer iso = result.get(CaptureResult.SENSOR_SENSITIVITY);
             Long exp = result.get(CaptureResult.SENSOR_EXPOSURE_TIME);
             Float focus = result.get(CaptureResult.LENS_FOCUS_DISTANCE);
+
+            if (iso != null && iso > 0) {
+                lastAutoIso = iso;
+            }
+            if (exp != null && exp > 0) {
+                lastAutoExposureNs = exp;
+            }
 
             final int finalIso = (iso != null) ? iso : -1;
             final long finalExp = (exp != null) ? exp : -1L;
@@ -431,16 +441,15 @@ public class CameraController {
             }
 
             // Manual ISO & Exposure
-            if (currentIso > 0 && currentCapabilities.isManualSensorSupported()) {
+            if ((currentIso > 0 || currentExposureNs > 0) && currentCapabilities.isManualSensorSupported()) {
                 captureBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF);
-                captureBuilder.set(CaptureRequest.SENSOR_SENSITIVITY, currentIso);
-            }
-            if (currentExposureNs > 0 && currentCapabilities.isManualSensorSupported()) {
-                captureBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF);
-                captureBuilder.set(CaptureRequest.SENSOR_EXPOSURE_TIME, currentExposureNs);
-                captureBuilder.set(CaptureRequest.SENSOR_FRAME_DURATION, currentExposureNs);
-            }
-            if (currentIso <= 0 && currentExposureNs <= 0) {
+                int isoToSet = (currentIso > 0) ? currentIso : lastAutoIso;
+                captureBuilder.set(CaptureRequest.SENSOR_SENSITIVITY, isoToSet);
+
+                long expToSet = (currentExposureNs > 0) ? currentExposureNs : lastAutoExposureNs;
+                captureBuilder.set(CaptureRequest.SENSOR_EXPOSURE_TIME, expToSet);
+                captureBuilder.set(CaptureRequest.SENSOR_FRAME_DURATION, expToSet);
+            } else {
                 captureBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
             }
 
@@ -453,7 +462,7 @@ public class CameraController {
             }
 
             // White balance
-            captureBuilder.set(CaptureRequest.CONTROL_AWB_MODE, currentAwbMode);
+            applyWhiteBalance(captureBuilder);
 
             // Turn off aggressive noise reduction for pristine stars
             captureBuilder.set(CaptureRequest.NOISE_REDUCTION_MODE, CaptureRequest.NOISE_REDUCTION_MODE_OFF);
@@ -641,8 +650,96 @@ public class CameraController {
     }
 
     public void setAwbMode(int awbMode) {
+        this.currentKelvin = -1;
         this.currentAwbMode = awbMode;
         applySettingsToPreview();
+    }
+
+    public void setKelvin(int kelvin) {
+        this.currentKelvin = kelvin;
+        applySettingsToPreview();
+    }
+
+    public void setAwbAuto() {
+        this.currentKelvin = -1;
+        this.currentAwbMode = CameraMetadata.CONTROL_AWB_MODE_AUTO;
+        applySettingsToPreview();
+    }
+
+    public int getCurrentKelvin() {
+        return currentKelvin;
+    }
+
+    private void applyWhiteBalance(CaptureRequest.Builder builder) {
+        if (currentKelvin <= 0) {
+            builder.set(CaptureRequest.CONTROL_AWB_MODE, currentAwbMode);
+        } else {
+            if (currentCapabilities != null && currentCapabilities.isAwbOffSupported()) {
+                builder.set(CaptureRequest.CONTROL_AWB_MODE, CameraMetadata.CONTROL_AWB_MODE_OFF);
+                builder.set(CaptureRequest.COLOR_CORRECTION_MODE, CameraMetadata.COLOR_CORRECTION_MODE_TRANSFORM_MATRIX);
+                builder.set(CaptureRequest.COLOR_CORRECTION_GAINS, kelvinToRggb(currentKelvin));
+            } else {
+                int mode;
+                if (currentKelvin < 3500) {
+                    mode = CameraMetadata.CONTROL_AWB_MODE_INCANDESCENT;
+                } else if (currentKelvin < 4800) {
+                    mode = CameraMetadata.CONTROL_AWB_MODE_FLUORESCENT;
+                } else if (currentKelvin < 6000) {
+                    mode = CameraMetadata.CONTROL_AWB_MODE_DAYLIGHT;
+                } else if (currentKelvin < 7200) {
+                    mode = CameraMetadata.CONTROL_AWB_MODE_CLOUDY_DAYLIGHT;
+                } else {
+                    mode = CameraMetadata.CONTROL_AWB_MODE_SHADE;
+                }
+                builder.set(CaptureRequest.CONTROL_AWB_MODE, mode);
+            }
+        }
+    }
+
+    public static RggbChannelVector kelvinToRggb(float kelvin) {
+        float temp = kelvin / 100.0f;
+        float red, green, blue;
+
+        if (temp <= 66f) {
+            red = 255f;
+        } else {
+            float r = temp - 60f;
+            red = (float) (329.698727446 * Math.pow(r, -0.1332047592));
+            if (red < 0f) red = 0f;
+            if (red > 255f) red = 255f;
+        }
+
+        if (temp <= 66f) {
+            float g = temp;
+            green = (float) (99.4708025861 * Math.log(g) - 161.1195681661);
+        } else {
+            float g = temp - 60f;
+            green = (float) (288.1221695283 * Math.pow(g, -0.0755148492));
+        }
+        if (green < 0f) green = 0f;
+        if (green > 255f) green = 255f;
+
+        if (temp >= 66f) {
+            blue = 255f;
+        } else if (temp <= 19f) {
+            blue = 0f;
+        } else {
+            float b = temp - 10f;
+            blue = (float) (138.5177312231 * Math.log(b) - 305.0447927307);
+            if (blue < 0f) blue = 0f;
+            if (blue > 255f) blue = 255f;
+        }
+
+        float factorR = (red > 0f) ? (255f / red) : 1.0f;
+        float factorG = 1.0f;
+        float factorB = (blue > 0f) ? (255f / blue) : 1.0f;
+
+        return new RggbChannelVector(
+                Math.max(1.0f, Math.min(factorR, 4.0f)),
+                factorG,
+                factorG,
+                Math.max(1.0f, Math.min(factorB, 4.0f))
+        );
     }
 
     public void setCaptureFormat(CaptureFormat format) {

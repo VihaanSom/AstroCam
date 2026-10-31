@@ -15,6 +15,7 @@ import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
+import android.view.KeyEvent;
 import android.view.TextureView;
 import android.view.View;
 import android.view.WindowManager;
@@ -67,11 +68,31 @@ public class MainActivity extends AppCompatActivity {
 
     // Expandable Drawer
     private FrameLayout panelDrawer;
+
+    // ISO Controls
+    private LinearLayout panelIsoControls;
+    private Button btnIsoAuto;
+    private TextView tvIsoSliderVal;
+    private SeekBar sbIso;
+
+    // Shutter Controls
+    private LinearLayout panelShutterControls;
+    private Button btnShutterAuto;
+    private TextView tvShutterSliderVal;
+    private SeekBar sbShutter;
+
+    // Focus Controls
     private LinearLayout panelFocusControls;
     private Button btnFocusAf;
     private Button btnFocusInfinity;
     private TextView tvFocusSliderVal;
     private SeekBar sbFocus;
+
+    // White Balance Controls
+    private LinearLayout panelWbControls;
+    private Button btnWbAuto;
+    private TextView tvWbSliderVal;
+    private SeekBar sbWb;
 
     private HorizontalScrollView hsvChips;
     private LinearLayout llChipsContainer;
@@ -171,11 +192,27 @@ public class MainActivity extends AppCompatActivity {
         tvValWb = findViewById(R.id.tv_val_wb);
 
         panelDrawer = findViewById(R.id.panel_drawer);
+
+        panelIsoControls = findViewById(R.id.panel_iso_controls);
+        btnIsoAuto = findViewById(R.id.btn_iso_auto);
+        tvIsoSliderVal = findViewById(R.id.tv_iso_slider_val);
+        sbIso = findViewById(R.id.sb_iso);
+
+        panelShutterControls = findViewById(R.id.panel_shutter_controls);
+        btnShutterAuto = findViewById(R.id.btn_shutter_auto);
+        tvShutterSliderVal = findViewById(R.id.tv_shutter_slider_val);
+        sbShutter = findViewById(R.id.sb_shutter);
+
         panelFocusControls = findViewById(R.id.panel_focus_controls);
         btnFocusAf = findViewById(R.id.btn_focus_af);
         btnFocusInfinity = findViewById(R.id.btn_focus_infinity);
         tvFocusSliderVal = findViewById(R.id.tv_focus_slider_val);
         sbFocus = findViewById(R.id.sb_focus);
+
+        panelWbControls = findViewById(R.id.panel_wb_controls);
+        btnWbAuto = findViewById(R.id.btn_wb_auto);
+        tvWbSliderVal = findViewById(R.id.tv_wb_slider_val);
+        sbWb = findViewById(R.id.sb_wb);
 
         hsvChips = findViewById(R.id.hsv_chips);
         llChipsContainer = findViewById(R.id.ll_chips_container);
@@ -262,6 +299,140 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 toggleDrawer(ActiveDrawer.WB);
+            }
+        });
+
+        // ISO Slider and Auto button
+        sbIso.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                if (!fromUser) return;
+                CameraCapabilities caps = cameraController.getCurrentCapabilities();
+                if (caps == null || !caps.isManualSensorSupported()) return;
+
+                int minIso = caps.getMinIso();
+                int maxIso = caps.getMaxIso();
+                double logMin = Math.log(minIso);
+                double logMax = Math.log(maxIso);
+                double rawIso = Math.exp(logMin + (progress / 1000.0) * (logMax - logMin));
+
+                int iso;
+                if (rawIso < 500) {
+                    iso = (int) (Math.round(rawIso / 10.0) * 10);
+                } else if (rawIso < 2000) {
+                    iso = (int) (Math.round(rawIso / 50.0) * 50);
+                } else {
+                    iso = (int) (Math.round(rawIso / 100.0) * 100);
+                }
+                iso = Math.max(minIso, Math.min(iso, maxIso));
+
+                cameraController.setIso(iso);
+                tvValIso.setText(String.valueOf(iso));
+                tvIsoSliderVal.setText("ISO " + iso);
+
+                btnIsoAuto.setBackgroundResource(R.drawable.bg_chip_normal);
+                btnIsoAuto.setTextColor(ContextCompat.getColor(MainActivity.this, R.color.text_primary));
+                updateHudDisplay();
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {}
+        });
+
+        btnIsoAuto.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                cameraController.setIso(-1);
+                tvValIso.setText("AUTO");
+                tvIsoSliderVal.setText("AUTO");
+                btnIsoAuto.setBackgroundResource(R.drawable.bg_chip_selected);
+                btnIsoAuto.setTextColor(ContextCompat.getColor(MainActivity.this, R.color.accent_cyan));
+                updateHudDisplay();
+            }
+        });
+
+        // Shutter Slider and Auto button
+        sbShutter.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                if (!fromUser) return;
+                CameraCapabilities caps = cameraController.getCurrentCapabilities();
+                if (caps == null || !caps.isManualSensorSupported()) return;
+
+                long minNs = caps.getMinExposureNs();
+                long maxNs = caps.getMaxExposureNs();
+                double logMin = Math.log(minNs);
+                double logMax = Math.log(maxNs);
+                long rawNs = (long) Math.exp(logMin + (progress / 1000.0) * (logMax - logMin));
+                long snappedNs = snapShutterSpeed(rawNs, minNs, maxNs);
+
+                cameraController.setShutterSpeed(snappedNs);
+                String formatted = formatShutterSpeed(snappedNs);
+                tvValShutter.setText(formatted);
+                tvShutterSliderVal.setText(formatted);
+
+                btnShutterAuto.setBackgroundResource(R.drawable.bg_chip_normal);
+                btnShutterAuto.setTextColor(ContextCompat.getColor(MainActivity.this, R.color.text_primary));
+                updateHudDisplay();
+                checkIntervalSettingsWarning();
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {}
+        });
+
+        btnShutterAuto.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                cameraController.setShutterSpeed(-1L);
+                tvValShutter.setText("AUTO");
+                tvShutterSliderVal.setText("AUTO");
+                btnShutterAuto.setBackgroundResource(R.drawable.bg_chip_selected);
+                btnShutterAuto.setTextColor(ContextCompat.getColor(MainActivity.this, R.color.accent_cyan));
+                updateHudDisplay();
+                checkIntervalSettingsWarning();
+            }
+        });
+
+        // White Balance Slider and Auto button
+        sbWb.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                if (!fromUser) return;
+                int kelvin = 2000 + (int) ((progress / 1000.0) * 6000);
+                kelvin = (kelvin / 50) * 50;
+
+                cameraController.setKelvin(kelvin);
+                tvValWb.setText(kelvin + "K");
+                tvWbSliderVal.setText(formatKelvinLabel(kelvin));
+
+                btnWbAuto.setBackgroundResource(R.drawable.bg_chip_normal);
+                btnWbAuto.setTextColor(ContextCompat.getColor(MainActivity.this, R.color.text_primary));
+                updateHudDisplay();
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {}
+        });
+
+        btnWbAuto.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                cameraController.setAwbAuto();
+                tvValWb.setText("AUTO");
+                tvWbSliderVal.setText("AUTO AWB");
+                btnWbAuto.setBackgroundResource(R.drawable.bg_chip_selected);
+                btnWbAuto.setTextColor(ContextCompat.getColor(MainActivity.this, R.color.accent_cyan));
+                updateHudDisplay();
             }
         });
 
@@ -594,31 +765,31 @@ public class MainActivity extends AppCompatActivity {
 
         currentDrawer = drawer;
         panelDrawer.setVisibility(View.VISIBLE);
-        llChipsContainer.removeAllViews();
+        panelIsoControls.setVisibility(View.GONE);
+        panelShutterControls.setVisibility(View.GONE);
+        panelFocusControls.setVisibility(View.GONE);
+        panelWbControls.setVisibility(View.GONE);
+        hsvChips.setVisibility(View.GONE);
 
         CameraCapabilities caps = cameraController.getCurrentCapabilities();
         if (caps == null) return;
 
         switch (drawer) {
             case ISO:
-                panelFocusControls.setVisibility(View.GONE);
-                hsvChips.setVisibility(View.VISIBLE);
-                populateIsoChips(caps);
+                panelIsoControls.setVisibility(View.VISIBLE);
+                setupIsoDrawer(caps);
                 break;
             case SHUTTER:
-                panelFocusControls.setVisibility(View.GONE);
-                hsvChips.setVisibility(View.VISIBLE);
-                populateShutterChips(caps);
+                panelShutterControls.setVisibility(View.VISIBLE);
+                setupShutterDrawer(caps);
                 break;
             case FOCUS:
-                hsvChips.setVisibility(View.GONE);
                 panelFocusControls.setVisibility(View.VISIBLE);
                 setupFocusDrawer(caps);
                 break;
             case WB:
-                panelFocusControls.setVisibility(View.GONE);
-                hsvChips.setVisibility(View.VISIBLE);
-                populateWbChips(caps);
+                panelWbControls.setVisibility(View.VISIBLE);
+                setupWbDrawer(caps);
                 break;
             default:
                 closeDrawer();
@@ -629,56 +800,82 @@ public class MainActivity extends AppCompatActivity {
     private void closeDrawer() {
         currentDrawer = ActiveDrawer.NONE;
         panelDrawer.setVisibility(View.GONE);
+        panelIsoControls.setVisibility(View.GONE);
+        panelShutterControls.setVisibility(View.GONE);
         panelFocusControls.setVisibility(View.GONE);
+        panelWbControls.setVisibility(View.GONE);
         hsvChips.setVisibility(View.GONE);
     }
 
-    private void populateIsoChips(CameraCapabilities caps) {
+    private void setupIsoDrawer(CameraCapabilities caps) {
         if (!caps.isManualSensorSupported()) {
-            addDisabledNotice("Manual ISO not supported on this camera sensor.");
+            btnIsoAuto.setEnabled(false);
+            sbIso.setEnabled(false);
+            tvIsoSliderVal.setText("Manual ISO not supported");
             return;
         }
 
-        List<Integer> isos = caps.getSupportedIsoPresets();
-        int activeIso = cameraController.getCurrentIso();
+        btnIsoAuto.setEnabled(true);
+        sbIso.setEnabled(true);
 
-        for (final int iso : isos) {
-            TextView chip = createChipView(iso == -1 ? "AUTO" : "ISO " + iso, iso == activeIso);
-            chip.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    cameraController.setIso(iso);
-                    tvValIso.setText(iso == -1 ? "AUTO" : String.valueOf(iso));
-                    updateHudDisplay();
-                    closeDrawer();
-                }
-            });
-            llChipsContainer.addView(chip);
+        int minIso = caps.getMinIso();
+        int maxIso = caps.getMaxIso();
+        int curIso = cameraController.getCurrentIso();
+
+        if (curIso <= 0) {
+            btnIsoAuto.setBackgroundResource(R.drawable.bg_chip_selected);
+            btnIsoAuto.setTextColor(ContextCompat.getColor(this, R.color.accent_cyan));
+            tvIsoSliderVal.setText("AUTO");
+
+            double logMin = Math.log(minIso);
+            double logMax = Math.log(maxIso);
+            int defProgress = (int) Math.round(((Math.log(800) - logMin) / (logMax - logMin)) * 1000);
+            sbIso.setProgress(Math.max(0, Math.min(1000, defProgress)));
+        } else {
+            btnIsoAuto.setBackgroundResource(R.drawable.bg_chip_normal);
+            btnIsoAuto.setTextColor(ContextCompat.getColor(this, R.color.text_primary));
+            tvIsoSliderVal.setText("ISO " + curIso);
+
+            double logMin = Math.log(minIso);
+            double logMax = Math.log(maxIso);
+            int progress = (int) Math.round(((Math.log(curIso) - logMin) / (logMax - logMin)) * 1000);
+            sbIso.setProgress(Math.max(0, Math.min(1000, progress)));
         }
     }
 
-    private void populateShutterChips(CameraCapabilities caps) {
+    private void setupShutterDrawer(CameraCapabilities caps) {
         if (!caps.isManualSensorSupported()) {
-            addDisabledNotice("Manual Shutter not supported on this camera sensor.");
+            btnShutterAuto.setEnabled(false);
+            sbShutter.setEnabled(false);
+            tvShutterSliderVal.setText("Manual Shutter not supported");
             return;
         }
 
-        List<CameraCapabilities.ShutterPreset> presets = caps.getSupportedShutterPresets();
-        long activeNs = cameraController.getCurrentExposureNs();
+        btnShutterAuto.setEnabled(true);
+        sbShutter.setEnabled(true);
 
-        for (final CameraCapabilities.ShutterPreset preset : presets) {
-            TextView chip = createChipView(preset.label, preset.exposureNs == activeNs);
-            chip.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    cameraController.setShutterSpeed(preset.exposureNs);
-                    tvValShutter.setText(preset.label);
-                    updateHudDisplay();
-                    checkIntervalSettingsWarning();
-                    closeDrawer();
-                }
-            });
-            llChipsContainer.addView(chip);
+        long minNs = caps.getMinExposureNs();
+        long maxNs = caps.getMaxExposureNs();
+        long curExp = cameraController.getCurrentExposureNs();
+
+        if (curExp <= 0) {
+            btnShutterAuto.setBackgroundResource(R.drawable.bg_chip_selected);
+            btnShutterAuto.setTextColor(ContextCompat.getColor(this, R.color.accent_cyan));
+            tvShutterSliderVal.setText("AUTO");
+
+            double logMin = Math.log(minNs);
+            double logMax = Math.log(maxNs);
+            int defProgress = (int) Math.round(((Math.log(16_666_666L) - logMin) / (logMax - logMin)) * 1000);
+            sbShutter.setProgress(Math.max(0, Math.min(1000, defProgress)));
+        } else {
+            btnShutterAuto.setBackgroundResource(R.drawable.bg_chip_normal);
+            btnShutterAuto.setTextColor(ContextCompat.getColor(this, R.color.text_primary));
+            tvShutterSliderVal.setText(formatShutterSpeed(curExp));
+
+            double logMin = Math.log(minNs);
+            double logMax = Math.log(maxNs);
+            int progress = (int) Math.round(((Math.log(curExp) - logMin) / (logMax - logMin)) * 1000);
+            sbShutter.setProgress(Math.max(0, Math.min(1000, progress)));
         }
     }
 
@@ -709,24 +906,84 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void populateWbChips(CameraCapabilities caps) {
-        int[] awbModes = caps.getSupportedAwbModes();
-        int activeMode = cameraController.getCurrentAwbMode();
+    private void setupWbDrawer(CameraCapabilities caps) {
+        btnWbAuto.setEnabled(true);
+        sbWb.setEnabled(true);
 
-        for (final int mode : awbModes) {
-            String label = getAwbModeName(mode);
-            TextView chip = createChipView(label, mode == activeMode);
-            chip.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    cameraController.setAwbMode(mode);
-                    tvValWb.setText(getAwbShortName(mode));
-                    updateHudDisplay();
-                    closeDrawer();
-                }
-            });
-            llChipsContainer.addView(chip);
+        int curKelvin = cameraController.getCurrentKelvin();
+
+        if (curKelvin <= 0) {
+            btnWbAuto.setBackgroundResource(R.drawable.bg_chip_selected);
+            btnWbAuto.setTextColor(ContextCompat.getColor(this, R.color.accent_cyan));
+            tvWbSliderVal.setText("AUTO AWB");
+            sbWb.setProgress(500);
+        } else {
+            btnWbAuto.setBackgroundResource(R.drawable.bg_chip_normal);
+            btnWbAuto.setTextColor(ContextCompat.getColor(this, R.color.text_primary));
+            tvWbSliderVal.setText(formatKelvinLabel(curKelvin));
+
+            int progress = (int) Math.round(((curKelvin - 2000) / 6000.0) * 1000);
+            sbWb.setProgress(Math.max(0, Math.min(1000, progress)));
         }
+    }
+
+    private String formatShutterSpeed(long ns) {
+        if (ns <= 0) return "AUTO";
+        if (ns >= 1_000_000_000L) {
+            double sec = ns / 1_000_000_000.0;
+            if (Math.abs(sec - Math.round(sec)) < 0.05) {
+                return Math.round(sec) + "s";
+            } else {
+                return String.format(Locale.US, "%.1fs", sec);
+            }
+        } else {
+            long denom = Math.round(1_000_000_000.0 / ns);
+            return "1/" + denom + "s";
+        }
+    }
+
+    private long snapShutterSpeed(long rawNs, long minNs, long maxNs) {
+        if (rawNs >= 1_000_000_000L) {
+            double sec = rawNs / 1_000_000_000.0;
+            if (sec >= 10.0) {
+                sec = Math.round(sec);
+            } else if (sec >= 3.0) {
+                sec = Math.round(sec * 2.0) / 2.0;
+            } else {
+                sec = Math.round(sec * 4.0) / 4.0;
+            }
+            long snapped = (long) (sec * 1_000_000_000L);
+            return Math.max(minNs, Math.min(snapped, maxNs));
+        } else {
+            double denom = 1_000_000_000.0 / rawNs;
+            long cleanDenom;
+            if (denom >= 1000) {
+                cleanDenom = Math.round(denom / 250.0) * 250;
+            } else if (denom >= 200) {
+                cleanDenom = Math.round(denom / 50.0) * 50;
+            } else if (denom >= 50) {
+                cleanDenom = Math.round(denom / 10.0) * 10;
+            } else if (denom >= 10) {
+                cleanDenom = Math.round(denom / 2.0) * 2;
+            } else {
+                cleanDenom = Math.round(denom);
+            }
+            if (cleanDenom <= 0) cleanDenom = 1;
+            long snapped = 1_000_000_000L / cleanDenom;
+            return Math.max(minNs, Math.min(snapped, maxNs));
+        }
+    }
+
+    private String formatKelvinLabel(int kelvin) {
+        String desc;
+        if (kelvin < 2600) desc = "Candle";
+        else if (kelvin < 3400) desc = "Tungsten";
+        else if (kelvin < 4500) desc = "Fluores.";
+        else if (kelvin < 5800) desc = "Daylight";
+        else if (kelvin < 6800) desc = "Cloudy";
+        else if (kelvin < 7800) desc = "Shade";
+        else desc = "Deep Shade";
+        return kelvin + "K (" + desc + ")";
     }
 
     private String getAwbModeName(int mode) {
@@ -852,17 +1109,7 @@ public class MainActivity extends AppCompatActivity {
         String isoStr = (iso > 0) ? "ISO " + iso : "ISO AUTO";
 
         long expNs = cameraController.getCurrentExposureNs();
-        String expStr;
-        if (expNs > 0) {
-            if (expNs >= 1_000_000_000L) {
-                expStr = (expNs / 1_000_000_000L) + "s";
-            } else {
-                long denom = Math.round(1_000_000_000.0 / expNs);
-                expStr = "1/" + denom + "s";
-            }
-        } else {
-            expStr = "AUTO";
-        }
+        String expStr = (expNs > 0) ? formatShutterSpeed(expNs) : "AUTO";
 
         float focus = cameraController.getCurrentFocusDistance();
         String focusStr;
@@ -874,6 +1121,9 @@ public class MainActivity extends AppCompatActivity {
             focusStr = String.format(Locale.US, "MF %.1fm", (1.0f / focus));
         }
 
+        int kelvin = cameraController.getCurrentKelvin();
+        String wbStr = (kelvin > 0) ? kelvin + "K" : "WB AUTO";
+
         String formatStr;
         switch (cameraController.getCaptureFormat()) {
             case RAW: formatStr = "RAW"; break;
@@ -881,7 +1131,7 @@ public class MainActivity extends AppCompatActivity {
             case RAW_AND_JPEG: default: formatStr = "RAW+JPG"; break;
         }
 
-        tvHudStatus.setText(isoStr + " • " + expStr + " • " + focusStr + " • " + formatStr);
+        tvHudStatus.setText(isoStr + " • " + expStr + " • " + focusStr + " • " + wbStr + " • " + formatStr);
     }
 
     private void checkIntervalSettingsWarning() {
@@ -949,6 +1199,34 @@ public class MainActivity extends AppCompatActivity {
                 vibrator.vibrate(VibrationEffect.createOneShot(40, VibrationEffect.DEFAULT_AMPLITUDE));
             } else {
                 vibrator.vibrate(40);
+            }
+        }
+    }
+
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        int keyCode = event.getKeyCode();
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
+            if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                if (event.getRepeatCount() == 0) {
+                    triggerCaptureFromHardwareButton();
+                }
+                return true;
+            } else if (event.getAction() == KeyEvent.ACTION_UP) {
+                return true;
+            }
+        }
+        return super.dispatchKeyEvent(event);
+    }
+
+    private void triggerCaptureFromHardwareButton() {
+        if (isIntervalMode) {
+            if (btnIntervalAction != null && btnIntervalAction.isEnabled()) {
+                btnIntervalAction.performClick();
+            }
+        } else {
+            if (btnShutterTrigger != null && btnShutterTrigger.isEnabled()) {
+                btnShutterTrigger.performClick();
             }
         }
     }

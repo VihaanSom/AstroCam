@@ -185,6 +185,34 @@ public class CameraCapabilities {
         return facingStr + " Cam (" + cameraId + ")";
     }
 
+    public int getMinIso() {
+        return (isoRange != null) ? isoRange.getLower() : 50;
+    }
+
+    public int getMaxIso() {
+        return (isoRange != null) ? Math.max(isoRange.getUpper(), 3200) : 6400;
+    }
+
+    public long getMinExposureNs() {
+        return (exposureTimeRangeNs != null) ? exposureTimeRangeNs.getLower() : 100_000L; // 1/10000s default
+    }
+
+    public long getMaxExposureNs() {
+        // Astrophotography requires long exposure capabilities (e.g., up to 30 seconds).
+        // Many Android HAL drivers restrict SENSOR_INFO_EXPOSURE_TIME_RANGE to a small preview value (e.g. 1/4s or 250ms),
+        // yet still accept long exposure requests in still capture mode.
+        long halMax = (exposureTimeRangeNs != null) ? exposureTimeRangeNs.getUpper() : 30_000_000_000L;
+        return Math.max(halMax, 30_000_000_000L); // Ensure at least 30 seconds
+    }
+
+    public boolean isAwbOffSupported() {
+        if (supportedAwbModes == null) return false;
+        for (int mode : supportedAwbModes) {
+            if (mode == CameraMetadata.CONTROL_AWB_MODE_OFF) return true;
+        }
+        return false;
+    }
+
     public List<ShutterPreset> getSupportedShutterPresets() {
         List<ShutterPreset> presets = new ArrayList<>();
         // Auto
@@ -213,29 +241,27 @@ public class CameraCapabilities {
                 {0L, 32_000_000_000L}        // 32s
         };
 
-        if (exposureTimeRangeNs != null) {
-            long minNs = exposureTimeRangeNs.getLower();
-            long maxNs = exposureTimeRangeNs.getUpper();
+        long minNs = getMinExposureNs();
+        long maxNs = getMaxExposureNs();
 
-            for (long[] c : candidates) {
-                long denom = c[0];
-                long ns = c[1];
-                if (ns >= minNs && ns <= maxNs) {
-                    String label;
-                    if (denom > 0) {
-                        label = "1/" + denom + "s";
-                    } else {
-                        label = (ns / 1_000_000_000L) + "s";
-                    }
-                    presets.add(new ShutterPreset(label, ns));
+        for (long[] c : candidates) {
+            long denom = c[0];
+            long ns = c[1];
+            if (ns >= minNs && ns <= maxNs) {
+                String label;
+                if (denom > 0) {
+                    label = "1/" + denom + "s";
+                } else {
+                    label = (ns / 1_000_000_000L) + "s";
                 }
+                presets.add(new ShutterPreset(label, ns));
             }
+        }
 
-            // Also ensure the exact sensor maximum is available as a preset if not already present
-            long maxSec = maxNs / 1_000_000_000L;
-            if (maxSec >= 1 && presets.get(presets.size() - 1).exposureNs != maxNs) {
-                presets.add(new ShutterPreset(maxSec + "s (Max)", maxNs));
-            }
+        // Also ensure the exact sensor maximum is available as a preset if not already present
+        long maxSec = maxNs / 1_000_000_000L;
+        if (maxSec >= 1 && presets.get(presets.size() - 1).exposureNs != maxNs) {
+            presets.add(new ShutterPreset(maxSec + "s (Max)", maxNs));
         }
 
         return presets;
